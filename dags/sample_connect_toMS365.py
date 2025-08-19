@@ -10,6 +10,11 @@
 #      w/ apache/airflow:2.9.1 (downgraded after struggling with apache/airflow:3.0.3)
 #      (already) able to connect to OneDrive personal folder
 #      Connect to SharePoint site
+
+#8/19/2025 MODIFIED SAMPLE CONNECT SharePoint Site
+#      Modified: connect to SPSite, retrieve site ID, not connecting to any other resources yet
+
+## $sanit REMOVED, GROUP
 #=======================================================================================================
 
 #=======================================================================================================
@@ -34,7 +39,7 @@ from airflow.models import Variable #, XCom
 #     download_csv_by_path
 # )
 def get_access_token(client_id, tenant_id, username, password):
-    token_url = f"https://removed/{tenant_id}/oauth2/v2.0/token"
+    token_url = f"https://REMOVED/{tenant_id}/oauth2/v2.0/token"
     data = {
         'client_id': client_id,
         'scope': 'https://graph.microsoft.com/.default',
@@ -57,11 +62,11 @@ PASSWORD: str = Variable.get("")
 #=======================================================================================================
 # OneDrive Variables
 CONFIG = Variable.get("anya_connect_config", deserialize_json=True)
-SOURCE_FOLDER: str = CONFIG["source_folder"] #"https://domain.sharepoint.com/:f:/r/sites/GROUP/Shared%20Documents/anya_test_delete?removed" 
+SOURCE_FOLDER: str = CONFIG["source_folder"] #"https://domain.sharepoint.com/:f:/r/sites/GROUP/Shared%20Documents/anya_test_delete?REMOVED" 
 USER_ID: str = CONFIG[""]
 #=======================================================================================================
 # SharePoint Variables
-DOMAIN = "removed"
+DOMAIN = "REMOVED"
 SITE_NAME = "GROUP"
 FOLDER_PATH = "Shared Documents/anya_test_delete"
 #=======================================================================================================
@@ -102,14 +107,14 @@ def connect_to_MS365_resources():
         logger.info(f"Found {len(csv_files)} CSV files in source folder {SOURCE_FOLDER}.")
 
     #=======================================================================================================
-    # Task. Connect to our team SharePoint folder
-    # Get # of files in SharePoint site source folder
-    # SITE_NAME = "GROUP", FOLDER_PATH = "anya_test_delete"
+    # Task. Connect to our team SharePoint site
+    # Get site ID
+    # SITE_NAME = "GROUP"
     #======================================================================================================
     @task
-    def check_input_in_sharepoint(**context) -> None:
+    def connect_to_sharepoint_site(**context) -> None:
         """
-        Connect to SharePoint site and check files in the SharePoint source folder.
+        Connect to SharePoint site and get SharePoint site ID.
         """
         access_token = get_access_token(CLIENT_ID, TENANT_ID, USERNAME, PASSWORD)
         graph_api_base = "https://graph.microsoft.com/v1.0"
@@ -117,27 +122,17 @@ def connect_to_MS365_resources():
 
         # SharePoint VARS hardcoded above
         site_url = f"https://graph.microsoft.com/v1.0/sites/{DOMAIN}.sharepoint.com:/sites/{SITE_NAME}"
+        logger.info(f"Connecting to {SITE_NAME} SharePoint site: {site_url}")
         response = requests.get(site_url, headers=headers)
-        logger.info(f"Checking for input files in SharePoint source folder: {FOLDER_PATH}")
         #Get the site ID for your SharePoint site:
         site_id = response.json()["id"]
-        logger.info(f"Requesting SharePoint files from: {site_url}")
         logger.info(f"Response status code: {response.status_code}")
-
-        #Copilot example 
-        #  https://graph.microsoft.com/v1.0/sites/{site-id}/drive/root:/{folder-path}:/children
-        url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drive/root:/{FOLDER_PATH}:/children"
-        response = requests.get(url, headers=headers)
-        logger.info(f"Requesting SharePoint files from: {url}")
-        logger.info(f"Response status code: {response.status_code}")
-        
-        files = response.json().get('value', [])
-        logger.info(f"Found {len(files)} files in source folder {FOLDER_PATH}.")
+        logger.info(f"Got SharePoint site ID")
 
 
     #sequence of tasks
     check_input_in_onedrive()
-    check_input_in_sharepoint()
+    connect_to_sharepoint_site()
 
 
 # Instantiate the DAG
