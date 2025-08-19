@@ -1,0 +1,4 @@
+# Use this file to specify what directories or files you don't want airflow to scan for import.
+# This can help with airflow import execution time.
+# Prevent airflow from scanning/importing files in the tests folder
+tests/

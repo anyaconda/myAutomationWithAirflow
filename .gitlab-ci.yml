@@ -1,0 +1,8 @@
+stages:
+  - build
+  - test
+  - change-request
+  - deploy
+
+include:
+#removed

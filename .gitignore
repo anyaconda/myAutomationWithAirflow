@@ -1,0 +1,16 @@
+# Ignore commiting vscode settings or pycache files from venv.
+
+# vscode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Add other local files or folders that should not be commited to gitlab here:

@@ -1,0 +1,1 @@
+# Requirements needed to run tests locally and in the GitLab pipeline.
