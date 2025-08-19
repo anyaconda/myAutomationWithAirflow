@@ -20,7 +20,9 @@ This repository contains example Apache Airflow DAGs and related files for learn
 Added sanitized files for Automated CSV Comparison with Airflow.  
 
 ## Key Features
-- Securely connects to OneDrive or SharePoint using service credentials
+- Securely connects to OneDrive or SharePoint using service credentials  
+- List SPSite Document Libraries (aka Drives), list all items in a Drive, list all items in a Drive/Folder  
+- Can read all files in a specified SPSite folder
 
 ---
 
@@ -55,3 +57,25 @@ A personal cloud storage service that allows users to store, sync, and share fil
 A collaborative platform used for document management, intranet portals, and team sites. It enables organizations to manage content, knowledge, and applications to empower teamwork.
 
 Both tools work together to support seamless file sharing and collaboration, especially within Microsoft Teams and Outlook.
+
+## Appendix B. 
+###  Microsoft Graph API
+List many types of resources in a SharePoint site, including:  
+- Document libraries (e.g., "Shared Documents")  
+- Folders and files within document libraries  
+- SitePages (modern pages, news posts)  - Lists (custom SharePoint lists, including their items)  
+- Groups (SharePoint groups and their members)  
+-Site users (people with access to the site)  
+- Site drives (all document libraries)  
+- Site columns and content types  
+- Site navigation (menus, links)  
+- Site events (calendar events, if enabled)  
+- Site permissions (who has access and what level) 
+
+For example, you can use endpoints like: 
+
+- /sites/{site-id}/lists — List all SharePoint lists  
+- /sites/{site-id}/drives — List all document libraries  
+- /sites/{site-id}/users — List all users with access  
+- /sites/{site-id}/columns — List all site columns  
+- /sites/{site-id}/contentTypes — List all content types 
