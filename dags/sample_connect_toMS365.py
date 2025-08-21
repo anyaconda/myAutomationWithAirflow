@@ -5,16 +5,19 @@
 # Started from Airflow project 'anya-name', dags/anya-name-dag.py (see details at the end)
 
 
-#history 8/18/2025 SAMPLE CONNECT DAG TO OneDrive and SharePoint
+#history 8/18/2025 SAMPLE CONNECT DAG TO OneDrive and SPSite
 #      (already)Successful setup of local Airflow environment
 #      w/ apache/airflow:2.9.1 (downgraded after struggling with apache/airflow:3.0.3)
 #      (already) able to connect to OneDrive personal folder
-#      Connect to SharePoint site
+#      Connect to SPSite
 
-#8/19/2025 MODIFIED SAMPLE CONNECT SharePoint Site
+#8/19/2025 MODIFIED SAMPLE CONNECT SPSite
 #      Modified: connect to SPSite, retrieve site ID, not connecting to any other resources yet
-#8/19/2025 ADDED CONNECT TO SharePoint SITE -> DRIVE -> FOLDER
-#      Added: connecting to SharePoint drive and folder
+#8/19/2025 ADDED CONNECT TO SPSite -> DRIVE -> FOLDER
+#      Added: connecting to SPSite drive and folder
+
+#8/20/2025 ADDED READ DOCUMENT IN SPSite -> DRIVE -> FOLDER
+#      Added: connect to SPSite drive and folder, and read a document in that folder.
 
 ## $sanit REMOVED, GROUP
 #=======================================================================================================
@@ -22,6 +25,8 @@
 #=======================================================================================================
 # Standard library imports
 import requests
+import pandas as pd
+import io
 
 # Third-party imports
 from airflow.decorators import dag, task
@@ -67,7 +72,7 @@ CONFIG = Variable.get("anya_connect_config", deserialize_json=True)
 SOURCE_FOLDER: str = CONFIG["source_folder"] #"https://domain.sharepoint.com/:f:/r/sites/GROUP/Shared%20Documents/anya_test_delete?REMOVED" 
 USER_ID: str = CONFIG[""]
 #=======================================================================================================
-# SharePoint Variables
+# SPSite Variables
 DOMAIN = "REMOVED"
 SITE_NAME = "GROUP"
 DRIVE_NAME = "Documents"
@@ -109,29 +114,29 @@ def connect_to_MS365_resources():
         logger.info(f"Found {len(csv_files)} CSV files in source folder {SOURCE_FOLDER}.")
 
     #=======================================================================================================
-    # Task. Connect to our team SharePoint site
+    # Task. Connect to our team SPSite
     # Get site ID
     # SITE_NAME = "GROUP"
     #======================================================================================================
     @task
-    def connect_to_sharepoint_site(**context) -> None:
+    def connect_to_SPSite(**context) -> None:
         """
-        Connect to SharePoint site and get SharePoint site ID.
+        Connect to SPSite and get SPSite ID.
         """
         access_token = get_access_token(CLIENT_ID, TENANT_ID, USERNAME, PASSWORD)
         headers = {"Authorization": f"Bearer {access_token}"}
 
-        # SharePoint VARS hardcoded above
+        # SPSite VARS hardcoded above
         site_url = f"{GRAPH_API_BASE}/sites/{DOMAIN}.sharepoint.com:/sites/{SITE_NAME}"
-        logger.info(f"Connecting to {SITE_NAME} SharePoint site: {site_url}")
+        logger.info(f"Connecting to {SITE_NAME} SPSite: {site_url}")
         response = requests.get(site_url, headers=headers)
-        #Get the site ID for your SharePoint site:
+        #Get the site ID for your SPSite:
         site_id = response.json()["id"]
         logger.info(f"Response status code: {response.status_code}")
-        logger.info(f"Got SharePoint site ID")
+        logger.info(f"Got SPSite ID")
 
     #=======================================================================================================
-    # Task. Connect to team SharePoint site and list Document Libraries
+    # Task. Connect to team SPSite and list Document Libraries
     # Get site ID
     # use endpoints like: 
         # /sites/{site-id}/lists — List all SharePoint lists 
@@ -141,16 +146,16 @@ def connect_to_MS365_resources():
         # /sites/{site-id}/contentTypes — List all content types 
     #======================================================================================================
     @task
-    def list_document_libraries(**context) -> None:
+    def list_SPSite_document_libraries(**context) -> None:
         """
-        List all document libraries in a SharePoint site using Microsoft Graph API.
+        List all document libraries in a SPSite using Microsoft Graph API.
         """
         access_token = get_access_token(CLIENT_ID, TENANT_ID, USERNAME, PASSWORD)
         headers = {"Authorization": f"Bearer {access_token}"}
 
         # Get site ID
         site_url = f"{GRAPH_API_BASE}/sites/{DOMAIN}.sharepoint.com:/sites/{SITE_NAME}"
-        logger.info(f"Connecting to {SITE_NAME} SharePoint site: {site_url}")
+        logger.info(f"Connecting to {SITE_NAME} SPSite: {site_url}")
         response = requests.get(site_url, headers=headers)
         response.raise_for_status()
         site_id = response.json()["id"]
@@ -168,21 +173,21 @@ def connect_to_MS365_resources():
             logger.info(f"Library: {drive.get('name')} | ID: {drive.get('id')}")
     
     #=======================================================================================================
-    # Task. Connect to team SharePoint site and list items in a specific document library (drive)
+    # Task. Connect to team SPSite and list items in a specific document library (drive)
     # Get site ID, get drive ID
     # DRIVE_NAME = "Documents"
     #======================================================================================================
     @task
-    def list_items_in_drive(**context) -> None:
+    def list_items_in_SPSite_drive(**context) -> None:
         """
-        List all items in a specific document library (drive) in a SharePoint site using Microsoft Graph API.
+        List all items in a specific document library (drive) in a SPSite using Microsoft Graph API.
         """
         access_token = get_access_token(CLIENT_ID, TENANT_ID, USERNAME, PASSWORD)
         headers = {"Authorization": f"Bearer {access_token}"}
 
         # Get site ID
         site_url = f"{GRAPH_API_BASE}/sites/{DOMAIN}.sharepoint.com:/sites/{SITE_NAME}"
-        logger.info(f"Connecting to {SITE_NAME} SharePoint site: {site_url}")
+        logger.info(f"Connecting to {SITE_NAME} SPSite: {site_url}")
         response = requests.get(site_url, headers=headers)
         response.raise_for_status()
         site_id = response.json()["id"]
@@ -210,21 +215,21 @@ def connect_to_MS365_resources():
             logger.info(f"Item: {item.get('name')}")
 
     #=======================================================================================================
-    # Task. Connect to team SharePoint site and list items in a specific document library (drive) folder
+    # Task. Connect to team SPSite and list items in a specific document library (drive) folder
     # Get site ID, get drive ID
     # DRIVE_NAME = "Documents", FOLDER_PATH = "anya_test_delete"
     #======================================================================================================
     @task
-    def list_documents_in_drive_folder(**context) -> None:
+    def list_documents_in_SPSite_drive_folder(**context) -> None:
         """
-        Connect to a SharePoint site, access a drive folder, and list all documents in that folder.
+        Connect to a SPSite, access a drive folder, and list all documents in that folder.
         """
         access_token = get_access_token(CLIENT_ID, TENANT_ID, USERNAME, PASSWORD)
         headers = {"Authorization": f"Bearer {access_token}"}
 
         # Get site ID
         site_url = f"{GRAPH_API_BASE}/sites/{DOMAIN}.sharepoint.com:/sites/{SITE_NAME}"
-        logger.info(f"Connecting to {SITE_NAME} SharePoint site: {site_url}")
+        logger.info(f"Connecting to {SITE_NAME} SPSite: {site_url}")
         response = requests.get(site_url, headers=headers)
         response.raise_for_status()
         site_id = response.json()["id"]
@@ -251,17 +256,70 @@ def connect_to_MS365_resources():
         for item in items:
             logger.info(f"Item: {item.get('name')}")
 
+    #=======================================================================================================
+    # Task. Connect to team SPSite and read a document in a specific document library (drive) folder
+    # Get site ID, get drive ID
+    # DRIVE_NAME = "Documents", FOLDER_PATH = "anya_test_delete"
+    #======================================================================================================
+    @task
+    def read_document_in_SPSite_drive_folder(**context) -> None: 
+        """
+        Connect to a SPSite, access a drive folder, and read a document in that folder.
+        """
+        access_token = get_access_token(CLIENT_ID, TENANT_ID, USERNAME, PASSWORD)
+        headers = {"Authorization": f"Bearer {access_token}"}
+
+        # Get site ID
+        site_url = f"{GRAPH_API_BASE}/sites/{DOMAIN}.sharepoint.com:/sites/{SITE_NAME}"
+        logger.info(f"Connecting to {SITE_NAME} SPSite: {site_url}")
+        response = requests.get(site_url, headers=headers)
+        response.raise_for_status()
+        site_id = response.json()["id"]
+        logger.info(f"Site ID: {site_id}")
+
+        # Get drive ID for the specified document library
+        drives_url = f"{GRAPH_API_BASE}/sites/{site_id}/drives"
+        response = requests.get(drives_url, headers=headers)
+        response.raise_for_status()
+        drives = response.json().get('value', [])
+        drive_id = next((d['id'] for d in drives if d['name'] == DRIVE_NAME), None)
+        if not drive_id:
+            logger.error(f"Drive '{DRIVE_NAME}' not found.")
+            return
+        logger.info(f"Drive ID for '{DRIVE_NAME}': {drive_id}")
+
+        # List documents in the drive folder
+        url = f"{GRAPH_API_BASE}/sites/{site_id}/drives/{drive_id}/root:/{FOLDER_PATH}:/children"
+        response = requests.get(url, headers=headers)
+        logger.info(f"Requesting items from drive {DRIVE_NAME} folder {FOLDER_PATH}: {url}")
+        response.raise_for_status()
+        items = response.json().get('value', [])
+        logger.info(f"Items found in '{FOLDER_PATH}': {len(items)}")
+        for item in items:
+            logger.info(f"Item: {item.get('name')}")
+
+        #read 1st document in the folder
+        file_url = f"{GRAPH_API_BASE}/sites/{site_id}/drives/{drive_id}/root:/{FOLDER_PATH}:/children/{items[0].get('name')}/content"
+        logger.info(f"Using file path for download: {file_url}")
+        response = requests.get(file_url, headers=headers)
+        response.raise_for_status()
+        #check if they csv file was successfully read by making it into a df
+        df = pd.read_csv(io.BytesIO(response.content))
+        logger.info(df.shape)
+        logger.info(df.columns)
+
 
     #sequence of tasks:
 
     ##OneDrive
-    # check_input_in_onedrive()
+    # check_input_in_OneDrive()
 
-    ##SharePoint site
-    # connect_to_sharepoint_site()
-    # list_document_libraries()
-    # list_items_in_drive()
-    list_documents_in_drive_folder()
+    ##SPSite
+    # connect_to_SPSite()
+    # list_SPSite_document_libraries()
+    # list_SPSite_items_in_drive()
+    list_documents_in_SPSite_drive_folder()
+    read_document_in_SPSite_drive_folder()
 
 
 # Instantiate the DAG
