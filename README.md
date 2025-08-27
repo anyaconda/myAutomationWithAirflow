@@ -10,20 +10,22 @@ This repository contains example Apache Airflow DAGs and related files for learn
 
 
 - `tests/` - Contains test scripts:
-  - `test_examples.py` - Tests for example DAGs.
+  - `test_examples.py` - Basic Python and Airflow tests.
   - `test_requirements.txt` - Requirements for running tests.
-- `start.sh` - Shell script to start or initialize the project (usage details below).
+- `start.sh` - Shell script to start Airflow in a Podman container and install requirements (usage details below).
 - `README.md` - Project documentation.
 
 # 2. AnyaIntel project DAG
 
+This repository contains example Apache Airflow DAGs and related files for automating workflows, including integration with Microsoft 365 (OneDrive & SharePoint).
+
 Added sanitized files for Automated CSV Comparison with Airflow.  
 
 ## Key Features
-- Securely connects to OneDrive or SharePoint using service credentials  
+- Securely connect to OneDrive or SharePoint using service credentials  
 - List SPSite Document Libraries (aka Drives), list all items in a Drive, list all items in a Drive/Folder  
-- Can read all files in a specified SPSite folder
-
+- Read files in a specified SPSite folder
+- Write a document to a SPSite Document Library (aka Drive) folder
 ---
 
 # Xtra
@@ -39,27 +41,25 @@ This project is for educational and demonstration purposes.
 
 External:
 - [Airflow Documentation](https://airflow.apache.org/docs/apache-airflow/stable/index.html)
+- [Microsoft Graph API Docs](https://learn.microsoft.com/en-us/graph/overview)
 
 ---
 ## Maintainer
 **Author:** Anya Chaliotis
 
 ---
-## Appendix A.
+## Appendix A. MS365 for File Management: OneDrive and SharePoint
 
-### MS365 for File Management: OneDrive and SharePoint
-OneDrive and SharePoint are part of the Microsoft 365 family of products (formerly known as Office 365). This suite includes cloud-based tools and services designed to enhance productivity, collaboration, and data management across organizations.
+OneDrive and SharePoint are part of the Microsoft 365 family of products. This suite includes cloud-based tools and services for productivity, collaboration, and data management.
 
-- OneDrive:  
-A personal cloud storage service that allows users to store, sync, and share files securely. It's tightly integrated with Microsoft 365 apps like Word, Excel, and Teams.
+- **OneDrive:** Personal cloud storage for secure file storage, syncing, and sharing.  It's tightly integrated with Microsoft 365 apps like Word, Excel, and Teams.
 
-- SharePoint:  
-A collaborative platform used for document management, intranet portals, and team sites. It enables organizations to manage content, knowledge, and applications to empower teamwork.
+- **SharePoint:** Collaborative platform for document management, team sites, and intranet portals.  It enables organizations to manage content, knowledge, and applications to empower teamwork.
 
 Both tools work together to support seamless file sharing and collaboration, especially within Microsoft Teams and Outlook.
 
-## Appendix B. 
-###  Microsoft Graph API
+## Appendix B. Microsoft Graph API
+
 List many types of resources in a SharePoint site, including:  
 - Document libraries (e.g., "Shared Documents")  
 - Folders and files within document libraries  
@@ -72,8 +72,7 @@ List many types of resources in a SharePoint site, including:
 - Site events (calendar events, if enabled)  
 - Site permissions (who has access and what level) 
 
-For example, you can use endpoints like: 
-
+Example endpoints:  
 - /sites/{site-id}/lists — List all SharePoint lists  
 - /sites/{site-id}/drives — List all document libraries  
 - /sites/{site-id}/users — List all users with access  
