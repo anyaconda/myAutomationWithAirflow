@@ -14,6 +14,11 @@
 #9/2/2025 UTILS FOR MS365
 #      Modular helper methods for OneDrive and SharePoint
 
+#9/5/2025 ADDED CUSTOM UTILS LIBRARY, COPY FILE
+#      $delta_sample_connect_dag3
+#      Added: Copy a document within a SPSite/drive (a longer version)
+#      Enabled utils in 'sample_connect_toMS365' DAG: Write a document to a SPSite document library (drive) folder
+
 
 #tags $debug $actodo $manual $error 403
 ## $sanit NAME, DOMAIN, REMOVED, GROUP
@@ -38,6 +43,7 @@ import io
 __all__ = [
     'get_access_token',
     'upload_file',
+    'copy_file',
     'delete_file',
     'download_csv_by_path'
 ]
@@ -108,6 +114,23 @@ def upload_file(user_id, folder_path, file_or_path, access_token, file_content=N
     response.raise_for_status()
     print(f"Uploaded {filename}")
 
+def copy_file(file_path_in, item_id_in, file_path_id_new_in, access_token):
+    #copy file to another location
+    #$manual copy_url = f"https://graph.microsoft.com/v1.0/drives/{drive_id}/drive/items/{item_id}"
+    headers = {"Authorization": f"Bearer {access_token}"}
+    _copy_url = f"{file_path_in}/items/{item_id_in}/copy"
+
+    _copy_payload = {
+        "parentReference": {
+            "id": file_path_id_new_in
+        }#,
+        #"name": NEW_FILE_NAME
+    }
+
+    response = requests.post(_copy_url, headers=headers, json=_copy_payload)
+    print(f"Copied item {item_id_in} to folder {file_path_id_new_in}")
+    response.raise_for_status()
+
 def delete_file(user_id, item_id, access_token):
     graph_api_base = "https://graph.microsoft.com/v1.0"
     url = f"{graph_api_base}/users/{user_id}/drive/items/{item_id}"
@@ -121,55 +144,57 @@ def delete_file(user_id, item_id, access_token):
 
 
 #################################### XTRA ####################################
-# Debug version with print statements to trace the type of input and flow
-def upload_file_debug(user_id, folder_path, file_or_path, access_token, file_content=None):
-    """
-    Upload a file to OneDrive. Accepts either a file path (str), a file-like object/bytes, or direct file content (string/bytes) with a filename.
-    """
-    import io
-    graph_api_base = "https://graph.microsoft.com/v1.0"
-    if file_content is not None:
-        # file_or_path is expected to be the filename
-        filename = file_or_path
-        if isinstance(file_content, str):
-            print("1st a")
-            data = file_content.encode('utf-8')
-        else:
-            print("1st b")
-            data = file_content
-    elif isinstance(file_or_path, str):
-        print("2nd string")
-        filename = os.path.basename(file_or_path)
-        data = open(file_or_path, 'rb')
-    elif isinstance(file_or_path, io.BytesIO):
-        print("3d BytesIO")
-        file_or_path.seek(0)
-        filename = getattr(file_or_path, 'name', 'processed.xlsx')
-        data = file_or_path
-    elif isinstance(file_or_path, bytes):
-        print("4th definitely bytes")
-        filename = 'processed.xlsx'
-        data = io.BytesIO(file_or_path)
-    else:
-        raise ValueError("file_or_path must be a file path, BytesIO, bytes, or provide file_content.")
-    ###upload_url = f"{graph_api_base}/users/{user_id}/drive/root:/{folder_path}/{filename}:/content"
-    print("got here: ", data.__class__)
-    #upload_url = "https://graph.microsoft.com/v1.0/users/{user_id}/sites/DOMAIN.sharepoint.com,{site_id}/drives/{drive_id}/root:/anya_test_delete/sample.txt:/content"
-    #upload_url = "https://graph.microsoft.com/v1.0/users/{user_id}/sites/DOMAIN.sharepoint.com,{site_id}/drives/{drive_id}/root:/anya_test_delete/Files/add(url='sample.txt',overwrite=true)"
-    ###upload_url = "https://graph.microsoft.com/v1.0/users/{user_id}/sites/DOMAIN.sharepoint.com,{site_id}/_api/web/GetFolderByServerRelativeUrl('Documents')/Files/Add(url='yourfilename.txt',overwrite=true)"
-    #$actodo working URL from How to upload a large document in c# using the Microsoft Graph API rest calls
-    #refer to https://stackoverflow.com/questions/49776955/how-to-upload-a-large-document-in-c-sharp-using-the-microsoft-graph-api-rest-call
-    ##$manual hardcoded URL 
-    upload_url = "https://graph.microsoft.com/v1.0/drives/{drive_id}/root:/anya_test_delete/sample.csv:/content" #/items/root:/" + fileName + ":/content";
-    ##$debug upload_url = "https://graph.microsoft.com/v1.0/drives/b!tECiAyeOAUSuBuhb_mb7bZInWZsgCBtEn1Iz-VSKOy4FLg6JPSUYR66VnO5-wemV/root:/2_output/sample.txt:/content" # $error requests.exceptions.HTTPError: 403 Client Error: Forbidden for url: 
+# # Debug version with print statements to trace the type of input and flow
+# def upload_file_debug(user_id, folder_path, file_or_path, access_token, file_content=None):
+#     """
+#     Upload a file to OneDrive. Accepts either a file path (str), a file-like object/bytes, or direct file content (string/bytes) with a filename.
+#     """
+#     import io
+#     graph_api_base = "https://graph.microsoft.com/v1.0"
+#     if file_content is not None:
+#         # file_or_path is expected to be the filename
+#         filename = file_or_path
+#         if isinstance(file_content, str):
+#             print("1st a")
+#             data = file_content.encode('utf-8')
+#         else:
+#             print("1st b")
+#             data = file_content
+#     elif isinstance(file_or_path, str):
+#         print("2nd string")
+#         filename = os.path.basename(file_or_path)
+#         data = open(file_or_path, 'rb')
+#     elif isinstance(file_or_path, io.BytesIO):
+#         print("3d BytesIO")
+#         file_or_path.seek(0)
+#         filename = getattr(file_or_path, 'name', 'processed.xlsx')
+#         data = file_or_path
+#     elif isinstance(file_or_path, bytes):
+#         print("4th definitely bytes")
+#         filename = 'processed.xlsx'
+#         data = io.BytesIO(file_or_path)
+#     else:
+#         raise ValueError("file_or_path must be a file path, BytesIO, bytes, or provide file_content.")
+#     ###upload_url = f"{graph_api_base}/users/{user_id}/drive/root:/{folder_path}/{filename}:/content"
+#     print("got here: ", data.__class__)
+#     #upload_url = "https://graph.microsoft.com/v1.0/users/{user_id}/sites/DOMAIN.sharepoint.com,{site_id}/drives/{drive_id}/root:/anya_test_delete/sample.txt:/content"
+#     #upload_url = "https://graph.microsoft.com/v1.0/users/{user_id}/sites/DOMAIN.sharepoint.com,{site_id}/drives/{drive_id}/root:/anya_test_delete/Files/add(url='sample.txt',overwrite=true)"
+#     ###upload_url = "https://graph.microsoft.com/v1.0/users/{user_id}/sites/DOMAIN.sharepoint.com,{site_id}/_api/web/GetFolderByServerRelativeUrl('Documents')/Files/Add(url='yourfilename.txt',overwrite=true)"
+#     #$actodo working URL from How to upload a large document in c# using the Microsoft Graph API rest calls
+#     #refer to https://stackoverflow.com/questions/49776955/how-to-upload-a-large-document-in-c-sharp-using-the-microsoft-graph-api-rest-call
+#     ##$manual hardcoded URL 
+#     upload_url = "https://graph.microsoft.com/v1.0/drives/{drive_id}/root:/anya_test_delete/sample.csv:/content" #/items/root:/" + fileName + ":/content";
+#     ##$debug upload_url = "https://graph.microsoft.com/v1.0/drives/b!tECiAyeOAUSuBuhb_mb7bZInWZsgCBtEn1Iz-VSKOy4FLg6JPSUYR66VnO5-wemV/root:/2_output/sample.txt:/content" # $error requests.exceptions.HTTPError: 403 Client Error: Forbidden for url: 
 
-    headers = {"Authorization": f"Bearer {access_token}"}
-    response = requests.put(upload_url, headers=headers, data=data)
-    if isinstance(file_or_path, str) and file_content is None:
-        data.close()
-    response.raise_for_status()
-    print(f"Uploaded {filename}")
+#     headers = {"Authorization": f"Bearer {access_token}"}
+#     response = requests.put(upload_url, headers=headers, data=data)
+#     if isinstance(file_or_path, str) and file_content is None:
+#         data.close()
+#     response.raise_for_status()
+#     print(f"Uploaded {filename}")
 
+
+#################################### XTRA2 ####################################
 # DELETED FROM ORIGINAL
 # def list_files(user_id, folder_path, access_token):
 #     graph_api_base = "https://graph.microsoft.com/v1.0"

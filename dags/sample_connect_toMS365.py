@@ -30,6 +30,11 @@
 #      $temp kept prev vs now
 #      added a custom exception NoDriveFound
 
+#9/5/2025 ADDED CUSTOM UTILS LIBRARY, COPY FILE
+#      $delta_sample_connect_dag3
+#      Added: Copy a document within a SPSite/drive (a longer version)
+#      Enabled utils in 'sample_connect_toMS365' DAG: Write a document to a SPSite document library (drive) folder
+
 
 ## $sanit NAME, DOMAIN, REMOVED, GROUP, {user_id}
 
@@ -38,6 +43,12 @@
 # refer to https://stackoverflow.com/questions/49776955/how-to-upload-a-large-document-in-c-sharp-using-the-microsoft-graph-api-rest-call
 # similar in 'Have to upload files into Sharepoint online using Graph API'
 # refer to https://learn.microsoft.com/en-us/answers/questions/938993/have-to-upload-files-into-sharepoint-online-using
+
+#About copying file(s) using requests API 
+# G AI help: The requests library in Python is primarily designed for making HTTP requests to web servers, 
+# not for direct file system operations like copying a file from one local path to another. 
+# myNote somehow works: copy_url = f"{file_path_in}/items/{item_id_in}/copy"
+#   must be similar to upload_url = "https://api.example.com/upload"  # Replace with the upload API endpoint
 #=======================================================================================================
 
 #=======================================================================================================
@@ -56,7 +67,8 @@ from airflow.models import Variable #, XCom
 # # Project imports
 from utils.utils_MS365 import (
     get_access_token,
-#     upload_file,
+    upload_file,
+    copy_file,
 #     delete_file,
 #     download_csv_by_path
 )
@@ -80,6 +92,7 @@ USER_ID: str = CONFIG[""]
 SITE_NAME = "GROUP"
 DRIVE_NAME = "Documents"
 FOLDER_PATH = "anya_test_delete"
+FOLDER_PATH_PROCESSED = "5_test"
 #=======================================================================================================
 logger = LoggingMixin().log
  
@@ -210,23 +223,7 @@ def connect_to_MS365_resources():
     # SITE_NAME = "GROUP"
     #======================================================================================================
     @task
-    # def connect_to_SPSite(**context) -> None:
-    #     """
-    #     Connect to SPSite and get SPSite ID.
-    #     """
-    #     access_token = get_access_token(CLIENT_ID, TENANT_ID, USERNAME, PASSWORD)
-    #     headers = {"Authorization": f"Bearer {access_token}"}
-
-    #     # SPSite VARS hardcoded above
-    #     site_url = f"{GRAPH_API_BASE}/sites/{DOMAIN}.sharepoint.com:/sites/{SITE_NAME}"
-    #     logger.info(f"Connecting to {SITE_NAME} SPSite: {site_url}")
-    #     response = requests.get(site_url, headers=headers)
-    #     #Get the site ID for your SPSite:
-    #     site_id = response.json()["id"]
-    #     logger.info(f"Response status code: {response.status_code}")
-    #     logger.info(f"Got SPSite ID")
-
-     #delta_name_dag1 using XCom
+    #delta_name_dag1 using XCom
     def connect_to_SPSite(SPSITE_INFO) -> None:
         _site_id, _site_url, _drive_id, _drive_url = SPSITE_INFO
         logger.info(f"SPSite info for {SITE_NAME}: {_site_id}, {_site_url}")
@@ -242,32 +239,6 @@ def connect_to_MS365_resources():
         # /sites/{site-id}/contentTypes — List all content types 
     #======================================================================================================
     @task
-    # def list_SPSite_document_libraries(**context) -> None:
-    #     """
-    #     List all document libraries in a SPSite using Microsoft Graph API.
-    #     """
-    #     access_token = get_access_token(CLIENT_ID, TENANT_ID, USERNAME, PASSWORD)
-    #     headers = {"Authorization": f"Bearer {access_token}"}
-
-    #     # Get site ID
-    #     site_url = f"{GRAPH_API_BASE}/sites/{DOMAIN}.sharepoint.com:/sites/{SITE_NAME}"
-    #     logger.info(f"Connecting to {SITE_NAME} SPSite: {site_url}")
-    #     response = requests.get(site_url, headers=headers)
-    #     response.raise_for_status()
-    #     site_id = response.json()["id"]
-    #     logger.info(f"Site ID: {site_id}")
-
-    #     # List all document libraries (drives)
-    #     url = f"{GRAPH_API_BASE}/sites/{site_id}/drives"
-    #     logger.info(f"Requesting document libraries from site {SITE_NAME}: {url}")
-    #     response = requests.get(url, headers=headers)
-    #     #logger.info(f"Response status code: {response.status_code}")
-    #     response.raise_for_status()
-    #     drives = response.json().get('value', [])
-    #     logger.info(f"Document libraries found: {len(drives)}")
-    #     for drive in drives:
-    #         logger.info(f"Library: {drive.get('name')} | ID: {drive.get('id')}")
-
     #delta_name_dag1 using XCom
     def list_SPSite_document_libraries(SPSITE_INFO) -> None:
         """
@@ -293,42 +264,6 @@ def connect_to_MS365_resources():
     # DRIVE_NAME = "Documents"
     #======================================================================================================
     @task
-    # def list_items_in_SPSite_drive(**context) -> None:
-    #     """
-    #     List all items in a specific document library (drive) in a SPSite using Microsoft Graph API.
-    #     """
-    #     access_token = get_access_token(CLIENT_ID, TENANT_ID, USERNAME, PASSWORD)
-    #     headers = {"Authorization": f"Bearer {access_token}"}
-
-    #     # Get site ID
-    #     site_url = f"{GRAPH_API_BASE}/sites/{DOMAIN}.sharepoint.com:/sites/{SITE_NAME}"
-    #     logger.info(f"Connecting to {SITE_NAME} SPSite: {site_url}")
-    #     response = requests.get(site_url, headers=headers)
-    #     response.raise_for_status()
-    #     site_id = response.json()["id"]
-    #     logger.info(f"Site ID: {site_id}")
-
-    #     # Get drive ID for the specified document library
-    #     drives_url = f"{GRAPH_API_BASE}/sites/{site_id}/drives"
-    #     response = requests.get(drives_url, headers=headers)
-    #     response.raise_for_status()
-    #     drives = response.json().get('value', [])
-    #     drive_id = next((d['id'] for d in drives if d['name'] == DRIVE_NAME), None)
-    #     if not drive_id:
-    #         logger.error(f"Drive '{DRIVE_NAME}' not found.")
-    #         return
-    #     logger.info(f"Drive ID for '{DRIVE_NAME}': {drive_id}")
-
-    #     # List all items in the specified drive
-    #     items_url = f"{GRAPH_API_BASE}/drives/{drive_id}/root/children"
-    #     response = requests.get(items_url, headers=headers)
-    #     logger.info(f"Requesting items from drive {DRIVE_NAME}: {items_url}")
-    #     response.raise_for_status()
-    #     items = response.json().get('value', [])
-    #     logger.info(f"Items found in '{DRIVE_NAME}': {len(items)}")
-    #     for item in items:
-    #         logger.info(f"Item: {item.get('name')}")
-
     #delta_name_dag1 using XCom
     def list_items_in_SPSite_drive(SPSITE_INFO) -> None:
         """
@@ -413,52 +348,6 @@ def connect_to_MS365_resources():
     # DRIVE_NAME = "Documents", FOLDER_PATH = "anya_test_delete"
     #======================================================================================================
     @task
-    # def read_document_in_SPSite_drive_folder(**context) -> None: 
-    #     """
-    #     Connect to a SPSite, access a drive folder, and read a document in that folder.
-    #     """
-    #     access_token = get_access_token(CLIENT_ID, TENANT_ID, USERNAME, PASSWORD)
-    #     headers = {"Authorization": f"Bearer {access_token}"}
-
-    #     # Get site ID
-    #     site_url = f"{GRAPH_API_BASE}/sites/{DOMAIN}.sharepoint.com:/sites/{SITE_NAME}"
-    #     logger.info(f"Connecting to {SITE_NAME} SPSite: {site_url}")
-    #     response = requests.get(site_url, headers=headers)
-    #     response.raise_for_status()
-    #     site_id = response.json()["id"]
-    #     logger.info(f"Site ID: {site_id}")
-
-    #     # Get drive ID for the specified document library
-    #     drives_url = f"{GRAPH_API_BASE}/sites/{site_id}/drives"
-    #     response = requests.get(drives_url, headers=headers)
-    #     response.raise_for_status()
-    #     drives = response.json().get('value', [])
-    #     drive_id = next((d['id'] for d in drives if d['name'] == DRIVE_NAME), None)
-    #     if not drive_id:
-    #         logger.error(f"Drive '{DRIVE_NAME}' not found.")
-    #         return
-    #     logger.info(f"Drive ID for '{DRIVE_NAME}': {drive_id}")
-
-    #     # List documents in the drive folder
-    #     url = f"{GRAPH_API_BASE}/sites/{site_id}/drives/{drive_id}/root:/{FOLDER_PATH}:/children"
-    #     response = requests.get(url, headers=headers)
-    #     logger.info(f"Requesting items from drive {DRIVE_NAME} folder {FOLDER_PATH}: {url}")
-    #     response.raise_for_status()
-    #     items = response.json().get('value', [])
-    #     logger.info(f"Items found in '{FOLDER_PATH}': {len(items)}")
-    #     for item in items:
-    #         logger.info(f"Item: {item.get('name')}")
-
-    #     #read 1st document in the folder
-    #     file_url = f"{GRAPH_API_BASE}/sites/{site_id}/drives/{drive_id}/root:/{FOLDER_PATH}:/children/{items[0].get('name')}/content"
-    #     logger.info(f"Using file path for download: {file_url}")
-    #     response = requests.get(file_url, headers=headers)
-    #     response.raise_for_status()
-    #     #check if they csv file was successfully read by making it into a df
-    #     df = pd.read_csv(io.BytesIO(response.content))
-    #     logger.info(df.shape)
-    #     logger.info(df.columns)
-
     #delta_name_dag1 using XCom
     def read_document_in_SPSite_drive_folder(SPSITE_INFO) -> None: 
         """
@@ -494,60 +383,6 @@ def connect_to_MS365_resources():
     # DRIVE_NAME = "Documents", FOLDER_PATH = "anya_test_delete"
     #======================================================================================================
     @task
-    # def write_document_to_SPSite_drive_folder(**context) -> None: 
-    #     """
-    #     Write a document to a SPSite drive folder.
-    #     """
-    #     access_token = get_access_token(CLIENT_ID, TENANT_ID, USERNAME, PASSWORD)
-    #     headers = {"Authorization": f"Bearer {access_token}"}
-
-    #     # Get site ID
-    #     site_url = f"{GRAPH_API_BASE}/sites/{DOMAIN}.sharepoint.com:/sites/{SITE_NAME}"
-    #     logger.info(f"Connecting to {SITE_NAME} SPSite: {site_url}")
-    #     response = requests.get(site_url, headers=headers)
-    #     response.raise_for_status()
-    #     site_id = response.json()["id"]
-    #     logger.info(f"Site ID: {site_id}")
-
-    #     # Get drive ID for the specified document library
-    #     drives_url = f"{GRAPH_API_BASE}/sites/{site_id}/drives"
-    #     response = requests.get(drives_url, headers=headers)
-    #     response.raise_for_status()
-    #     drives = response.json().get('value', [])
-    #     drive_id = next((d['id'] for d in drives if d['name'] == DRIVE_NAME), None)
-    #     if not drive_id:
-    #         logger.error(f"Drive '{DRIVE_NAME}' not found.")
-    #         return
-    #     logger.info(f"Drive ID for '{DRIVE_NAME}': {drive_id}")
-        
-    #     # Prepare a sample string or text file for upload
-    #     file_name = 'sample'
-    #     ext = '.txt'
-    #     timestamp = datetime.now().strftime('%Y%m%d_%H%M')
-    #     file_out = f"{timestamp}_{file_name}{ext}"
-    #     #content options
-    #     string_data = "This is the string data to be sent in the PUT request body."
-    #     # txt_buffer = io.StringIO()
-    #     # txt_buffer.write("Sample text content")
-    #     # txt_buffer.seek(0)
-    #     # logger.info(f"Buffer content type: {txt_buffer.getvalue().__class__}") #<class 'str'>
-        
-    #     logger.info(f"Uploading file as {file_out} to destination folder: {FOLDER_PATH}.")
-
-    #     # Upload file delta_sample_connect_dag0
-    #     #$next utils.upload_file(USER_ID, FOLDER_PATH, file_out, access_token, file_content=txt_buffer.getvalue())
-
-    #     #How to write a working URL from 'How to upload a large document in c# using the Microsoft Graph API rest calls'
-    #     #refer to https://stackoverflow.com/questions/49776955/how-to-upload-a-large-document-in-c-sharp-using-the-microsoft-graph-api-rest-call
-    #     #$manual hardcoded URL - $note straight to drive
-    #     #upload_url = f"https://graph.microsoft.com/v1.0/drives/{drive_id}}/root:/anya_test_delete/{file_out}:/content"
-    #     #$dynamic URL
-    #     upload_url = f"{GRAPH_API_BASE}/drives/{drive_id}/root:/{FOLDER_PATH}/{file_out}:/content"
-    #     logger.info(f"Uploading file to: {upload_url}")
-    #     response = requests.put(upload_url, headers=headers, data=string_data) #txt_buffer.getvalue().encode('utf-8')) #content option
-    #     response.raise_for_status()
-    #     print(f"Uploaded {file_out} to SharePoint drive '{DRIVE_NAME}' in folder '{FOLDER_PATH}'.")
-
     #delta_name_dag1 using XCom
     def write_document_to_SPSite_drive_folder(SPSITE_INFO) -> None: 
         """
@@ -558,46 +393,77 @@ def connect_to_MS365_resources():
         _site_id, _site_url, _drive_id, _drive_url = SPSITE_INFO
         
         # Prepare a sample string or text file for upload
-        file_name = 'sample'
+        file_name = 'sample_utils'
         ext = '.txt'
         timestamp = datetime.now().strftime('%Y%m%d_%H%M')
         file_out = f"{timestamp}_{file_name}{ext}"
         #content options
-        string_data = "This is the string data to be sent in the PUT request body."
+        string_data = "This is the string data to be sent in the PUT request body, using utils.upload_file()."
         # txt_buffer = io.StringIO()
         # txt_buffer.write("Sample text content")
         # txt_buffer.seek(0)
         # logger.info(f"Buffer content type: {txt_buffer.getvalue().__class__}") #<class 'str'>
         
         logger.info(f"Uploading file as {file_out} to destination folder: {FOLDER_PATH}.")
+        # Upload file delta_sample_connect_dag0, delta_sample_connect_dag3
+        OUTPUT_PATH_URL = f"{_drive_url}/root:/{FOLDER_PATH}"
+        upload_file(USER_ID, OUTPUT_PATH_URL, file_out, access_token, file_content=string_data) #txt_buffer.getvalue().encode('utf-8')) #content option
+        logger.info(f"Uploaded {file_out} to SharePoint drive '{DRIVE_NAME}' in folder '{FOLDER_PATH}'.")
 
-        # Upload file delta_sample_connect_dag0
-        #$next utils.upload_file(USER_ID, FOLDER_PATH, file_out, access_token, file_content=txt_buffer.getvalue())
+    #=======================================================================================================
+    # Task. Move a document within a SPSite/drive (a longer version)
+    # DRIVE_NAME = "Documents", FOLDER_PATH = "anya_test_delete"
+    #======================================================================================================
+    #delta_sample_connect_dag3 
+    @task
+    def move_document(SPSITE_INFO) -> None: 
+        """
+        Move a document within a SPSite/drive (a longer version)
+        """
+        access_token = get_access_token(CLIENT_ID, TENANT_ID, USERNAME, PASSWORD)
+        headers = {"Authorization": f"Bearer {access_token}"}
+        _site_id, _site_url, _drive_id, _drive_url = SPSITE_INFO
 
-        #How to write a working URL from 'How to upload a large document in c# using the Microsoft Graph API rest calls'
-        #refer to https://stackoverflow.com/questions/49776955/how-to-upload-a-large-document-in-c-sharp-using-the-microsoft-graph-api-rest-call
-        #$manual hardcoded URL- $note straight to drive
-        #upload_url = f"https://graph.microsoft.com/v1.0/drives/b!ZH6YF9MJTE23ZjOVv-fEIpInWZsgCBtEn1Iz-VSKOy7HZXuDhfGETIbfD-wc2Wa9/root:/anya_test_delete/{file_out}:/content"
-        #$dynamic URL
-        upload_url = f"{_drive_url}/root:/{FOLDER_PATH}/{file_out}:/content" #delta_sample_connect_dag1
-        logger.info(f"Uploading file to: {upload_url}")
-        response = requests.put(upload_url, headers=headers, data=string_data) #txt_buffer.getvalue().encode('utf-8')) #content option
+        # List documents in the drive folder (to get IDs)
+        url = f"{_drive_url}/root:/{FOLDER_PATH}:/children" #delta_sample_connect_dag1
+        response = requests.get(url, headers=headers)
+        logger.info(f"Requesting items from drive {DRIVE_NAME} folder {FOLDER_PATH}: {url}")
         response.raise_for_status()
-        print(f"Uploaded {file_out} to SharePoint drive '{DRIVE_NAME}' in folder '{FOLDER_PATH}'.")
+        items = response.json().get('value', [])
+        logger.info(f"Items found in '{FOLDER_PATH}': {len(items)}")
+
+        # Get IDs
+        FILE_NAME = "sample1.txt"
+
+        for item in items:
+            # get file ID to copy
+            logger.info(f"Item: {item.get('name')}, {item.get('id')}")
+            if item.get('name') == FILE_NAME:
+                ITEM_ID = item.get('id')
+                logger.info(f"Found file '{FILE_NAME}' with ID: {ITEM_ID}")
+            # Get destination folder ID
+            if item.get('name') == FOLDER_PATH_PROCESSED:
+                FOLDER_ID = item.get('id')
+                logger.info(f"Found folder '{FOLDER_PATH_PROCESSED}' with ID: {FOLDER_ID}")
+
+        copy_file(_drive_url, ITEM_ID, FOLDER_ID, access_token)
 
 
     #sequence of tasks:
+    #=======================================================================================================
 
     ##OneDrive
     # check_input_in_OneDrive()
 
     ##SPSite
-    # connect_to_SPSite()
-    # list_SPSite_document_libraries()
-    # list_SPSite_items_in_drive()
-    list_documents_in_SPSite_drive_folder()
-    read_document_in_SPSite_drive_folder()
-    write_document_to_SPSite_drive_folder()
+    SPSITE_INFO = set_SPSite_info()
+    # connect_to_SPSite(SPSITE_INFO)
+    # list_SPSite_document_libraries(SPSITE_INFO)
+    # list_SPSite_items_in_driv(SPSITE_INFO)
+    list_documents_in_SPSite_drive_folder(SPSITE_INFO)
+    read_document_in_SPSite_drive_folder(SPSITE_INFO)
+    write_document_to_SPSite_drive_folder(SPSITE_INFO)
+    move_document(SPSITE_INFO)
 
 
 # Instantiate the DAG
