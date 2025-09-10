@@ -35,6 +35,15 @@
 #      Added: Copy a document within a SPSite/drive (a longer version)
 #      Enabled utils in 'sample_connect_toMS365' DAG: Write a document to a SPSite document library (drive) folder
 
+#9/8/2025 ADDED CUSTOM UTILS LIBRARY, DELETE FILE
+#      $delta_sample_connect_dag3a
+#      Tried: Copy a document within a SPSite/drive ('utils.copy_file' a shorter version)
+#      For now sticking with 'utils.copy_file', a longer version
+#      Added: Delete a document within a SPSite/drive
+#9/9/2025 FINALIZED UTILS LIBRARY
+#      Enabled utils: Read a document in SPSite -> drive -> folder
+#      Finalized utils read, write, move (copy+delete)
+
 
 ## $sanit NAME, DOMAIN, REMOVED, GROUP, {user_id}
 
@@ -69,8 +78,8 @@ from utils.utils_MS365 import (
     get_access_token,
     upload_file,
     copy_file,
-#     delete_file,
-#     download_csv_by_path
+    delete_file,
+    download_csv_by_path
 )
 
 #=======================================================================================================
@@ -100,7 +109,7 @@ logger = LoggingMixin().log
 default_args = {
     'owner': 'airflow',
     # 'email_on_failure': True,
-    # 'email': [{user_id}],
+    # 'email': USER_ID,
 }
 #=======================================================================================================
     
@@ -364,18 +373,23 @@ def connect_to_MS365_resources():
         response.raise_for_status()
         items = response.json().get('value', [])
         logger.info(f"Items found in '{FOLDER_PATH}': {len(items)}")
-        for item in items:
-            logger.info(f"Item: {item.get('name')}")
-
-        #read 1st document in the folder
-        file_url = f"{_drive_url}/root:/{FOLDER_PATH}:/children/{items[0].get('name')}/content" #delta_sample_connect_dag1
+        # $was
+        # for item in items:
+        #     logger.info(f"Item: {item.get('name')}")
+        csv_file = [f for f in items if f.get('file') and f['name'].lower().endswith('.csv')]
+  
+        #read 1st csv document in the folder
+        file_url = f"{_drive_url}/root:/{FOLDER_PATH}:/children/{csv_file[0].get('name')}/content" #delta_sample_connect_dag1
         logger.info(f"Using file path for download: {file_url}")
-        response = requests.get(file_url, headers=headers)
-        response.raise_for_status()
-        #check if the .csv file was successfully read by making it into a df; seems to work ok with a simple .txt file (which is not .csv)
-        df = pd.read_csv(io.BytesIO(response.content))
+        df = download_csv_by_path(file_url, access_token) #delta_name_dag0, delta_name_dag3a
+        # $was
+        # response = requests.get(file_url, headers=headers)
+        # response.raise_for_status()
+        # #check if the .csv file was successfully read by making it into a df; seems to work ok with a simple .txt file (which is not .csv)
+        # df = pd.read_csv(io.BytesIO(response.content))
+        logger.info(f"CSV file '{csv_file[0].get('name')}' downloaded and read into DataFrame.")
         logger.info(df.shape)
-        logger.info(df.columns)
+        #logger.info(df.columns)
 
 
     #=======================================================================================================
@@ -407,12 +421,13 @@ def connect_to_MS365_resources():
         logger.info(f"Uploading file as {file_out} to destination folder: {FOLDER_PATH}.")
         # Upload file delta_sample_connect_dag0, delta_sample_connect_dag3
         OUTPUT_PATH_URL = f"{_drive_url}/root:/{FOLDER_PATH}"
-        upload_file(USER_ID, OUTPUT_PATH_URL, file_out, access_token, file_content=string_data) #txt_buffer.getvalue().encode('utf-8')) #content option
+        upload_file(OUTPUT_PATH_URL, file_out, access_token, file_content_in=string_data) #txt_buffer.getvalue().encode('utf-8')) #content option
         logger.info(f"Uploaded {file_out} to SharePoint drive '{DRIVE_NAME}' in folder '{FOLDER_PATH}'.")
 
     #=======================================================================================================
     # Task. Move a document within a SPSite/drive (a longer version)
     # DRIVE_NAME = "Documents", FOLDER_PATH = "anya_test_delete"
+    # move = copy + delete
     #======================================================================================================
     #delta_sample_connect_dag3 
     @task
@@ -432,24 +447,55 @@ def connect_to_MS365_resources():
         items = response.json().get('value', [])
         logger.info(f"Items found in '{FOLDER_PATH}': {len(items)}")
 
-        # Get IDs
+        # Get IDs - here the file to move and the destination folder live in the same dir
         FILE_NAME = "sample1.txt"
+        ITEM_ID = None
 
         for item in items:
             # get file ID to copy
-            logger.info(f"Item: {item.get('name')}, {item.get('id')}")
+            #logger.info(f"Item: {item.get('name')}, {item.get('id')}")
             if item.get('name') == FILE_NAME:
                 ITEM_ID = item.get('id')
                 logger.info(f"Found file '{FILE_NAME}' with ID: {ITEM_ID}")
             # Get destination folder ID
             if item.get('name') == FOLDER_PATH_PROCESSED:
-                FOLDER_ID = item.get('id')
-                logger.info(f"Found folder '{FOLDER_PATH_PROCESSED}' with ID: {FOLDER_ID}")
+                FOLDER_PROCESSED_ID = item.get('id')
+                logger.info(f"Found folder '{FOLDER_PATH_PROCESSED}' with ID: {FOLDER_PROCESSED_ID}")
 
-        copy_file(_drive_url, ITEM_ID, FOLDER_ID, access_token)
+        if ITEM_ID:
+            # Move files from input to the destination folder
+            logger.info(f"Moving file: {FILE_NAME} to folder: {FOLDER_PATH_PROCESSED}")
+
+            # Copy file to the destination folder
+            copy_file(_drive_url, ITEM_ID, FOLDER_PROCESSED_ID, access_token) #delta_name_dag3
+            # #delta_sample_connect_dag3a (shorter version)
+            # copy_file(_drive_url, DRIVE_NAME, FOLDER_PATH, FILE_NAME, FOLDER_PATH_PROCESSED, access_token)
+
+            # List documents in the drive dest folder (to get IDs)
+            dest_folder_url = f"{_drive_url}/root:/{FOLDER_PATH}/{FOLDER_PATH_PROCESSED}:/children" #delta_sample_connect_dag1
+            dest_response = requests.get(dest_folder_url, headers=headers)
+            logger.info(f"Requesting items from drive {DRIVE_NAME} folder {FOLDER_PATH_PROCESSED}: {dest_folder_url}")
+            dest_response.raise_for_status()
+            dest_items = dest_response.json().get('value', [])
+            logger.info(f"Items found in '{FOLDER_PATH}': {len(dest_items)}")
+            for dest_item in dest_items:
+                # get file ID to copy
+                #logger.info(f"Item: {dest_item.get('name')}, {dest_item.get('id')}")
+                if dest_item.get('name') == FILE_NAME:
+                    DEST_ITEM_ID = dest_item.get('id')
+                    logger.info(f"Found file '{FILE_NAME}' with ID: {DEST_ITEM_ID}")
+
+            # Delete the original file #delta_sample_connect_dag3a
+            delete_file(_drive_url, ITEM_ID, access_token)
+        elif not ITEM_ID:
+            logger.info(f"File '{FILE_NAME}' not found in folder '{FOLDER_PATH}'.")
+            raise FileNotFoundError(f"File '{FILE_NAME}' not found in folder '{FOLDER_PATH}'.")
+        
+        logger.info("Move file completed.")
 
 
-    #sequence of tasks:
+    #=======================================================================================================
+    #Sequence of tasks:
     #=======================================================================================================
 
     ##OneDrive
@@ -459,11 +505,12 @@ def connect_to_MS365_resources():
     SPSITE_INFO = set_SPSite_info()
     # connect_to_SPSite(SPSITE_INFO)
     # list_SPSite_document_libraries(SPSITE_INFO)
-    # list_SPSite_items_in_driv(SPSITE_INFO)
+    # list_items_in_SPSite_drive(SPSITE_INFO)
     list_documents_in_SPSite_drive_folder(SPSITE_INFO)
     read_document_in_SPSite_drive_folder(SPSITE_INFO)
     write_document_to_SPSite_drive_folder(SPSITE_INFO)
     move_document(SPSITE_INFO)
+#=======================================================================================================
 
 
 # Instantiate the DAG

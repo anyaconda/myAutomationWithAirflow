@@ -25,7 +25,8 @@ Added sanitized files for Automated CSV Comparison with Airflow.
 - Securely connect to OneDrive or SharePoint using service credentials  
 - List SPSite Document Libraries (aka Drives), list all items in a Drive, list all items in a Drive/Folder  
 - Read files in a specified SPSite folder
-- Write a document to a SPSite Document Library (aka Drive) folder
+- Write a document to a SPSite Document Library (aka Drive) folder  
+- Move a document within a SPSite (move = copy + delete)
 ---
 
 # Xtra
